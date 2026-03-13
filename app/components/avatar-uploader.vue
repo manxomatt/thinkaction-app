@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { CircleStencil, Cropper } from 'vue-advanced-cropper';
 import 'vue-advanced-cropper/dist/style.css';
+import { uploadToPresignedUrl } from '~/composables/upload';
 
 const { user, updateUser } = useAuth();
 
@@ -75,11 +76,8 @@ const upload = async () => {
       },
     });
 
-    await $fetch(res.upload_url, {
-      method: 'PUT',
-      body: blob,
-      headers: { 'Content-Type': blob.type },
-    });
+    // Upload to presigned URL (handles both native and web platforms)
+    await uploadToPresignedUrl(res.upload_url, blob);
 
     await useApiClientFetch(`/users/${user.value?._id}`, {
       method: 'PATCH',

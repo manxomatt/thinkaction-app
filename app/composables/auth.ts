@@ -1,3 +1,6 @@
+import { CapacitorHttp } from '@capacitor/core';
+import { setAuthToken, setRefreshToken } from './capacitor';
+
 export interface IUser {
   _id?: string
   email?: string
@@ -20,6 +23,7 @@ export const useAuthToken = () => useState<string | null>('authToken', () => nul
 export const useAuth = () => {
   const user = useAuthUser();
   const token = useAuthToken();
+  const { isNative } = useCapacitor();
 
   const isAuthenticated = computed(() => !!user.value);
 
@@ -29,6 +33,42 @@ export const useAuth = () => {
 
   const signin = async (username: string, password: string) => {
     const config = useRuntimeConfig();
+
+    // Use Capacitor native HTTP for native platforms to bypass CORS
+    if (isNative) {
+      const response = await CapacitorHttp.post({
+        url: `${config.public.apiBase}/auth/signin`,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        data: JSON.stringify({ username, password }),
+        webFetchExtra: {
+          credentials: 'include',
+        },
+        connectTimeout: 30000,
+        readTimeout: 30000,
+      });
+
+      if (response.status >= 400) {
+        throw createError({
+          statusCode: response.status,
+          data: response.data,
+        });
+      }
+
+      const data = response.data as IUser;
+      // Store tokens for native apps
+      if (response.headers?.['x-access-token']) {
+        await setAuthToken(response.headers['x-access-token']);
+      }
+      if (response.headers?.['x-refresh-token']) {
+        await setRefreshToken(response.headers['x-refresh-token']);
+      }
+      updateUser(data);
+      return data;
+    }
+
+    // Use standard fetch for web
     const data = await $fetch<IUser>('/auth/signin', {
       baseURL: config.public.apiBase,
       method: 'POST',
