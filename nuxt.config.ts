@@ -1,11 +1,25 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
+  // Enable static site generation for Capacitor
+  ssr: false,
   modules: [
     '@unocss/nuxt',
     '@vueuse/nuxt',
     '@nuxt/eslint',
     '@stefanobartoletti/nuxt-social-share',
   ],
+  app: {
+    head: {
+      script: [
+        {
+          // Store original fetch before Capacitor patches it
+          // This runs before any other scripts, including Capacitor
+          innerHTML: 'window.__originalFetch = window.fetch.bind(window);',
+          type: 'text/javascript',
+        },
+      ],
+    },
+  },
   imports: {
     dirs: [
       '~/composables',

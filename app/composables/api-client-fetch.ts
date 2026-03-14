@@ -1,8 +1,47 @@
 import { useRuntimeConfig } from 'nuxt/app';
 import type { FetchError, FetchOptions, FetchRequest } from 'ofetch';
 import qs from 'qs';
+import { CapacitorHttp, type HttpResponse } from '@capacitor/core';
+import { useCapacitor, getAuthToken, setAuthToken, setRefreshToken } from './capacitor';
 
-// --- Helper Function: Refresh Token ---
+// --- Helper Function: Refresh Token (Native) ---
+async function refreshAccessTokenNative(): Promise<boolean> {
+  try {
+    const config = useRuntimeConfig();
+    const authToken = await getAuthToken();
+
+    const response = await CapacitorHttp.post({
+      url: `${config.public.apiBase}/auth/refresh`,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+      },
+      connectTimeout: 30000,
+      readTimeout: 30000,
+    });
+
+    if (response.status >= 400) {
+      console.warn('🚫 Token refresh failed (native)');
+      return false;
+    }
+
+    // Store new tokens if provided
+    if (response.headers?.['x-access-token']) {
+      await setAuthToken(response.headers['x-access-token']);
+    }
+    if (response.headers?.['x-refresh-token']) {
+      await setRefreshToken(response.headers['x-refresh-token']);
+    }
+
+    console.info('🔁 Token refreshed successfully (native)');
+    return true;
+  } catch {
+    console.warn('🚫 Token refresh failed (native)');
+    return false;
+  }
+}
+
+// --- Helper Function: Refresh Token (Web) ---
 async function refreshAccessToken(): Promise<boolean> {
   try {
     await $fetch('/auth/refresh', {
@@ -18,6 +57,100 @@ async function refreshAccessToken(): Promise<boolean> {
   }
 }
 
+// --- Native API Fetch using Capacitor HTTP ---
+async function nativeApiFetch<T>(
+  url: string,
+  options: FetchOptions = {},
+  hasRetried = false,
+): Promise<T> {
+  const config = useRuntimeConfig();
+  const { query, body, method = 'GET', headers = {} } = options;
+
+  // Build full URL with query params
+  let fullUrl = `${config.public.apiBase}${url}`;
+
+  if (query && Object.keys(query).length > 0) {
+    const queryString = qs.stringify(query, {
+      allowDots: true,
+      arrayFormat: 'brackets',
+    });
+    fullUrl = `${fullUrl}${fullUrl.includes('?') ? '&' : '?'}${queryString}`;
+  }
+
+  // Get auth token for native requests
+  const authToken = await getAuthToken();
+
+  const requestHeaders: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(headers as Record<string, string>),
+    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+  };
+
+  // Ensure body is properly serialized for Capacitor HTTP
+  const serializedData = body !== undefined && body !== null
+    ? (typeof body === 'string' ? body : JSON.stringify(body))
+    : undefined;
+
+  const httpOptions = {
+    url: fullUrl,
+    headers: requestHeaders,
+    data: serializedData,
+    // Add timeout to prevent hanging requests
+    connectTimeout: 30000,
+    readTimeout: 30000,
+  };
+
+  let response: HttpResponse;
+
+  switch (method.toUpperCase()) {
+  case 'POST':
+    response = await CapacitorHttp.post(httpOptions);
+    break;
+  case 'PUT':
+    response = await CapacitorHttp.put(httpOptions);
+    break;
+  case 'PATCH':
+    response = await CapacitorHttp.patch(httpOptions);
+    break;
+  case 'DELETE':
+    response = await CapacitorHttp.delete(httpOptions);
+    break;
+  default:
+    response = await CapacitorHttp.get({ url: fullUrl, headers: requestHeaders, connectTimeout: 30000, readTimeout: 30000 });
+  }
+
+  // Store new tokens if provided in response
+  if (response.headers?.['x-access-token']) {
+    await setAuthToken(response.headers['x-access-token']);
+  }
+  if (response.headers?.['x-refresh-token']) {
+    await setRefreshToken(response.headers['x-refresh-token']);
+  }
+
+  if (response.status >= 400) {
+    const error = {
+      status: response.status,
+      statusCode: response.status,
+      data: response.data,
+      message: response.data?.message || 'Request failed',
+    };
+
+    // Handle token expiration (401)
+    if (response.status === 401 && !hasRetried && url !== '/auth/refresh') {
+      console.warn('Token expired, attempting refresh... (native)');
+      const refreshed = await refreshAccessTokenNative();
+      if (refreshed) {
+        console.info('Token refreshed, retrying original request... (native)');
+        return nativeApiFetch<T>(url, options, true);
+      }
+    }
+
+    throw error;
+  }
+
+  return response.data as T;
+}
+
 // --- Main API Fetch Wrapper ---
 export async function useApiClientFetch<T>(
   url: FetchRequest,
@@ -25,6 +158,18 @@ export async function useApiClientFetch<T>(
   hasRetried = false,
 ): Promise<T> {
   const config = useRuntimeConfig();
+  const { isNative } = useCapacitor();
+
+  // Use native HTTP for Capacitor apps to bypass CORS
+  if (isNative) {
+    const urlString =
+      typeof url === 'string'
+        ? url
+        : url instanceof URL
+          ? url.pathname + url.search
+          : (url as Request).url;
+    return nativeApiFetch<T>(urlString, options, hasRetried);
+  }
 
   // 1. Separate 'query' from other options
   // We need to handle query parameters manually before $fetch

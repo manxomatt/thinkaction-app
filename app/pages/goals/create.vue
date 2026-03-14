@@ -37,8 +37,9 @@ const typeTextSequentially = async (msg: { html: string; full: string } | undefi
 
 const config = useRuntimeConfig();
 const apiBaseURL = config.public.apiBase;
+const { isNative } = useCapacitor();
 
-const postAi = (code: string) => {
+const postAi = async (code: string) => {
   if (!form.value.specific || !form.value.measurable || !form.value.achievable || !form.value.relevant) {
     toast('Please complete all form before continue.', { color: 'danger' });
     return;
@@ -62,10 +63,6 @@ const postAi = (code: string) => {
 
   const urlWithParams = `${apiBaseURL}/ai/send?${queryParams}`;
 
-  eventSource = new EventSource(urlWithParams, {
-    withCredentials: true,
-  });
-
   const processFinalChunk = async (finalContent: string) => {
     const newMessageIndex = messages.value.length;
     messages.value.push({ full: '', html: '' });
@@ -73,17 +70,16 @@ const postAi = (code: string) => {
     return await typeTextSequentially(messages.value[newMessageIndex], finalContent);
   };
 
-  eventSource.onmessage = async (event) => {
-    if (event.data === '[DONE]') {
-      eventSource?.close();
+  const processSSEData = async (data: string) => {
+    if (data === '[DONE]') {
       currentPromise = currentPromise.then(() => processFinalChunk(paragraphBuffer));
       paragraphBuffer = '';
-      return;
+      return true; // Signal done
     }
 
     try {
-      const chunk = JSON.parse(event.data);
-      const content = chunk?.content ?? event.data;
+      const chunk = JSON.parse(data);
+      const content = chunk?.content ?? data;
       paragraphBuffer += content;
 
       const paragraphs = paragraphBuffer.split(/\n{2,}/);
@@ -103,20 +99,76 @@ const postAi = (code: string) => {
 
       paragraphBuffer = paragraphs[0] ?? '';
     } catch {
-      paragraphBuffer += event.data;
+      paragraphBuffer += data;
     }
+    return false;
   };
 
   const handleStreamEnd = () => {
-    eventSource?.close();
     if (paragraphBuffer.trim()) {
       currentPromise = currentPromise.then(() => processFinalChunk(paragraphBuffer));
       paragraphBuffer = '';
     }
   };
 
-  eventSource.onerror = handleStreamEnd;
-  eventSource.addEventListener('end', handleStreamEnd);
+  // Use fetch with streaming for both native and web (avoids CORS issues on native)
+  if (isNative) {
+    // For native apps, use fetch API which Capacitor can intercept
+    // Note: Capacitor HTTP plugin doesn't support streaming, so we use a workaround
+    // by making a regular fetch request that the native layer can handle
+    try {
+      const { CapacitorHttp } = await import('@capacitor/core');
+      const authToken = await import('~/composables/capacitor').then(m => m.getAuthToken());
+      const response = await CapacitorHttp.get({
+        url: urlWithParams,
+        headers: {
+          'Accept': 'text/event-stream',
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        },
+        connectTimeout: 60000,
+        readTimeout: 60000,
+      });
+
+      // Process the full response as SSE data
+      if (response.data) {
+        const lines = (typeof response.data === 'string' ? response.data : JSON.stringify(response.data)).split('\n');
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6).trim();
+            if (data) {
+              const isDone = await processSSEData(data);
+              if (isDone) break;
+            }
+          }
+        }
+        handleStreamEnd();
+      }
+    } catch (error) {
+      console.error('Native SSE fetch error:', error);
+      handleStreamEnd();
+    }
+  } else {
+    // For web, use EventSource (standard SSE)
+    eventSource = new EventSource(urlWithParams, {
+      withCredentials: true,
+    });
+
+    eventSource.onmessage = async (event) => {
+      const isDone = await processSSEData(event.data);
+      if (isDone) {
+        eventSource?.close();
+      }
+    };
+
+    eventSource.onerror = () => {
+      eventSource?.close();
+      handleStreamEnd();
+    };
+    eventSource.addEventListener('end', () => {
+      eventSource?.close();
+      handleStreamEnd();
+    });
+  }
 };
 
 const askAi = async () => {

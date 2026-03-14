@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import { useApiGoals } from '~/composables/api/goals';
 import { useFormGoalCreate } from '~/composables/form/goal/create';
+import { uploadToPresignedUrl } from '~/composables/upload';
 
 const { user: myUser } = useAuth();
 
@@ -51,16 +52,38 @@ const isPosting = ref(false);
 const onPost = async () => {
   isPosting.value = true;
 
+  console.log('=== GOAL CREATE POST START ===');
+  console.log('Form data:', {
+    specific: form.value.specific,
+    measurable: form.value.measurable,
+    achievable: form.value.achievable,
+    relevant: form.value.relevant,
+    thumbnail_blob: form.value.thumbnail_blob ? {
+      type: form.value.thumbnail_blob.type,
+      size: form.value.thumbnail_blob.size,
+      sizeKB: (form.value.thumbnail_blob.size / 1024).toFixed(2),
+    } : null,
+  });
+
   if (!form.value.specific || !form.value.measurable || !form.value.achievable || !form.value.relevant || !form.value.thumbnail_blob) {
+    console.error('Form validation failed - missing required fields');
     toast('Please complete all form before continue.', { color: 'danger' });
     isPosting.value = false;
     return;
   }
 
   form.value.visibility = selected.value?.value as 'public' | 'supporters' | 'private';
+  console.log('Visibility set to:', form.value.visibility);
 
   try {
     if (form.value.thumbnail_blob) {
+      console.log('=== PRESIGN REQUEST START ===');
+      console.log('Requesting presigned URL with:', {
+        type: form.value.thumbnail_blob.type,
+        ext: getExtensionFromBlob(form.value.thumbnail_blob),
+        size: form.value.thumbnail_blob.size,
+      });
+
       const res = await useApiClientFetch<IPresignAvatarResponse>('/storages/presign-goal', {
         method: 'POST',
         credentials: 'include',
@@ -70,13 +93,20 @@ const onPost = async () => {
           size: form.value.thumbnail_blob.size,
         },
       });
-      form.value.thumbnail_url = `${res.public_domain}${res.public_path}`;
 
-      await $fetch(res.upload_url, {
-        method: 'PUT',
-        body: form.value.thumbnail_blob,
-        headers: { 'Content-Type': form.value.thumbnail_blob.type },
-      });
+      console.log('=== PRESIGN RESPONSE ===');
+      console.log('Presign response:', JSON.stringify(res, null, 2));
+      console.log('Upload URL:', res.upload_url);
+      console.log('Public domain:', res.public_domain);
+      console.log('Public path:', res.public_path);
+
+      form.value.thumbnail_url = `${res.public_domain}${res.public_path}`;
+      console.log('Full thumbnail URL:', form.value.thumbnail_url);
+
+      // Upload to presigned URL (handles both native and web platforms)
+      console.log('=== STARTING UPLOAD TO PRESIGNED URL ===');
+      await uploadToPresignedUrl(res.upload_url, form.value.thumbnail_blob);
+      console.log('=== UPLOAD COMPLETED ===');
     }
 
     await useApiGoals().create(form.value as IUser);
@@ -101,11 +131,18 @@ const onPost = async () => {
 
     navigateTo('/');
   } catch (error) {
+    console.error('=== GOAL CREATE ERROR ===');
+    console.error('Error type:', error?.constructor?.name);
+    console.error('Error message:', error instanceof Error ? error.message : String(error));
+    console.error('Error stack:', error instanceof Error ? error.stack : 'N/A');
+    console.error('Full error:', JSON.stringify(error, Object.getOwnPropertyNames(error || {}), 2));
+
     const errors = handleError(error);
     if (errors) {
       toast('Posting error.', { color: 'danger' });
     }
   } finally {
+    console.log('=== GOAL CREATE POST END ===');
     isPosting.value = false;
   }
 };
