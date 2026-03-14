@@ -1,3 +1,5 @@
+import pkg from './package.json';
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   // Enable static site generation for Capacitor
@@ -35,6 +37,10 @@ export default defineNuxtConfig({
     public: {
       appBase: process.env.APP_BASE,
       apiBase: process.env.API_BASE,
+      // OTA Configuration
+      appVersion: pkg.version,
+      otaManifestUrl: process.env.OTA_MANIFEST_URL || 'https://pointhub-s3.s3.ap-southeast-1.amazonaws.com/thinkaction/manifest.json',
+      otaCheckInterval: Number(process.env.OTA_CHECK_INTERVAL) || 0, // seconds, 0 = disabled
     },
   },
   devServer: {

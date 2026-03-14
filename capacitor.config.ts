@@ -39,6 +39,28 @@ const config: CapacitorConfig = {
       // to bypass the patched fetch which doesn't handle binary data correctly
       enabled: true,
     },
+    CapacitorUpdater: {
+      // OTA Update Configuration
+      // IMPORTANT: autoUpdate must be false for self-hosted S3 manifests
+      // because the native plugin sends POST requests, but S3 only accepts GET.
+      // The JavaScript plugin (ota.client.ts) handles updates using GET requests.
+      autoUpdate: false,
+      appReadyTimeout: 10000,
+      responseTimeout: 20,
+      autoDeleteFailed: true,
+      autoDeletePrevious: false,
+      // Self-hosted OTA manifest URL - configure via environment variables
+      // Note: This URL is used by the JS plugin, not the native auto-update
+      updateUrl: process.env.OTA_MANIFEST_URL || 'https://pointhub-s3.s3.ap-southeast-1.amazonaws.com/thinkaction/manifest.json',
+      channelUrl: process.env.CAPGO_CHANNEL_URL || '',
+      statsUrl: process.env.CAPGO_STATS_URL || '',
+      // Security: set publicKey in CI if using encrypted bundles
+      publicKey: process.env.CAPGO_PUBLIC_KEY || undefined,
+      defaultChannel: 'default',
+      // Developer options (disable in production)
+      shakeMenu: false,
+      allowShakeChannelSelector: false,
+    },
   },
 };
 
