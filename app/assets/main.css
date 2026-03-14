@@ -1,5 +1,28 @@
 @import '@point-hub/papp/index.css';
 
+/* Safe area insets for mobile devices with navigation bars/notches */
+:root {
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --safe-area-inset-right: env(safe-area-inset-right, 0px);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-inset-left: env(safe-area-inset-left, 0px);
+}
+
+/* Utility class for bottom safe area padding */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Utility class for bottom safe area with additional padding */
+.pb-safe {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
+}
+
+/* Fixed bottom elements should account for safe area */
+.fixed-bottom-safe {
+  bottom: env(safe-area-inset-bottom, 0px);
+}
+
 @layer base {
   .scrollbar-hidden {
     /* Firefox */

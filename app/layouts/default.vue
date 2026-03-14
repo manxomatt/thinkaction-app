@@ -140,7 +140,7 @@ onMounted(async () => {
     <!-- Slide-Up Create Options (Mobile) -->
     <Transition name="slide-up">
       <div v-if="showCreateMenu" class="fixed inset-0 bg-black/50 flex items-end justify-center z-50" @click.self="showCreateMenu = false">
-        <div class="menu-panel w-full max-w-xl bg-white rounded-t-2xl">
+        <div class="menu-panel w-full max-w-xl bg-white rounded-t-2xl pb-[env(safe-area-inset-bottom,0px)]">
           <div class="flex justify-between items-center mb-2 pt-4 px-4">
             <h3 class="text-sm font-semibold" />
             <button @click="showCreateMenu = false">
@@ -165,7 +165,7 @@ onMounted(async () => {
     <!-- Slide-Up Menu (Mobile) -->
     <Transition name="slide-up">
       <div v-if="showMenu" class="fixed inset-0 bg-black/50 flex items-end justify-center z-50" @click.self="showMenu = false">
-        <div class="menu-panel w-full max-w-xl bg-white rounded-t-2xl">
+        <div class="menu-panel w-full max-w-xl bg-white rounded-t-2xl pb-[env(safe-area-inset-bottom,0px)]">
           <div class="flex justify-between items-center mb-2 pt-4 px-4">
             <h3 class="text-sm font-semibold">
               More Options
@@ -194,13 +194,13 @@ onMounted(async () => {
     </Transition>
 
     <!-- Main Content Area -->
-    <main class="flex-1 pb-16 lg:pb-0 lg:ml-64 flex relative max-w-screen">
+    <main class="flex-1 pb-[calc(4rem+env(safe-area-inset-bottom,0px))] lg:pb-0 lg:ml-64 flex relative max-w-screen">
       <slot />
     </main>
 
     <!-- Bottom Navigation (Mobile only) -->
     <nav
-      class="fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-gray-200 flex justify-around items-center lg:hidden shadow-2xl"
+      class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around items-center lg:hidden shadow-2xl pb-[env(safe-area-inset-bottom,0px)] h-[calc(4rem+env(safe-area-inset-bottom,0px))]"
     >
       <nuxt-link to="/">
         <div class="i-lucide:home text-3xl text-black cursor-pointer" />
