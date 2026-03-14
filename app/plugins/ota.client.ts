@@ -34,9 +34,29 @@ export default defineNuxtPlugin(() => {
     }
   })();
 
+  // Setup Capacitor App plugin listener for app resume events
+  // This is more reliable than window 'focus' event on native platforms
+  (async () => {
+    try {
+      const { App } = await import('@capacitor/app');
+      App.addListener('appStateChange', ({ isActive }) => {
+        if (isActive) {
+          console.log('[OTA] App resumed, checking for updates...');
+          checkForUpdate();
+        }
+      });
+    }
+    catch {
+      // Capacitor App plugin not available - will fall back to window focus event
+      console.log('[OTA] Capacitor App plugin not available, using window focus event');
+    }
+  })();
+
   async function checkForUpdate() {
     try {
-      // Prefer native plugin API when available
+      // Get the native updater plugin if available (for download/set operations)
+      // Note: We do NOT use getLatest() because it sends POST requests,
+      // but S3-hosted manifests only accept GET requests (HTTP 405 error).
       let updater: CapacitorUpdaterPlugin | null = null;
       try {
         const mod = await import('@capgo/capacitor-updater');
@@ -46,29 +66,7 @@ export default defineNuxtPlugin(() => {
         updater = null;
       }
 
-      if (updater && typeof updater.getLatest === 'function') {
-        try {
-          const latest = await updater.getLatest();
-          // If getLatest returns without throwing, an update is available
-          const want = confirm(`Update ${latest.version} available. Download now?`);
-          if (!want) return;
-          const downloaded = await updater.download({ version: latest.version, url: latest.url || '' });
-          // queue for next app background or set immediately
-          await updater.next({ id: downloaded.id });
-          alert('Update downloaded; it will be applied on next app background/restart.');
-          return;
-        }
-        catch (err: unknown) {
-          const error = err as Error;
-          if (error && error.message && error.message.includes('No new version')) {
-            // No update - nothing to do
-            return;
-          }
-          console.error('Updater plugin check failed', err);
-        }
-      }
-
-      // Fallback: check a simple manifest.json hosted on your server
+      // Check manifest.json hosted on S3 using GET request
       const res = await fetch(manifestUrlString, { cache: 'no-store' });
       if (!res.ok) return;
       const manifest = await res.json() as OTAManifest;
@@ -125,8 +123,13 @@ export default defineNuxtPlugin(() => {
     }
   }
 
-  // run check on app start and on focus, optionally periodic
+  // run check on app start
   checkForUpdate();
+
+  // Use window focus event as fallback for browser environments
+  // (Capacitor App plugin listener handles native app resume above)
   window.addEventListener('focus', checkForUpdate);
+
+  // Optionally run periodic checks
   if (updateCheckInterval > 0) setInterval(checkForUpdate, updateCheckInterval * 1000);
 });
