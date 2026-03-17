@@ -196,8 +196,8 @@ const isWithin7Days = (createdAt: string | Date) => {
     class="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50"
     @click.self="closeModal"
   >
-    <div class="relative w-full h-full sm:w-[400px] sm:h-[90%] bg-black rounded-lg overflow-hidden flex flex-col">
-      <div class="absolute top-0 left-0 right-0 p-2 flex gap-1 z-20">
+    <div class="story-modal-container relative w-full h-full sm:w-[400px] sm:h-[90%] bg-black rounded-lg overflow-hidden flex flex-col">
+      <div class="story-progress-bar absolute top-0 left-0 right-0 p-2 flex gap-1 z-20">
         <div
           v-for="(story, index) in goal?.progress"
           :key="'bar-' + index"
@@ -210,7 +210,7 @@ const isWithin7Days = (createdAt: string | Date) => {
         </div>
       </div>
 
-      <nuxt-link :to="`/goals/${currentStory?.goal_id}`" class="z-100 text-center py-1 px-2 absolute bottom-0 w-full bg-slate-600 text-white text-sm line-clamp-5 opacity-75 flex items-center line-height-relaxed">
+      <nuxt-link :to="`/goals/${currentStory?.goal_id}`" class="story-caption z-100 text-center py-1 px-2 absolute bottom-0 w-full bg-slate-600 text-white text-sm line-clamp-5 opacity-75 flex items-center line-height-relaxed">
         {{ currentStory?.caption }}
       </nuxt-link>
 
@@ -260,13 +260,13 @@ const isWithin7Days = (createdAt: string | Date) => {
       </div>
 
       <button
-        class="absolute top-6 right-2 text-white text-2xl z-20 opacity-70 hover:opacity-100"
+        class="story-close-btn absolute right-2 text-white text-2xl z-20 opacity-70 hover:opacity-100"
         @click="closeModal"
       >
         &times;
       </button>
 
-      <div class="absolute top-6 left-2 text-white flex items-center gap-2 z-20">
+      <div class="story-user-info absolute left-2 text-white flex items-center gap-2 z-20">
         <avatar :size="32" :user="goal?.created_by" />
         <span class="font-bold text-sm">{{ goal?.created_by?.username }}</span>
       </div>

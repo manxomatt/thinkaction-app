@@ -132,3 +132,55 @@
 .slide-up-leave-to .menu-panel {
   transform: translateY(100%);
 }
+
+/* Story Modal Safe Area Styles */
+/* Default styles for web */
+.story-progress-bar {
+  padding-top: 0.5rem;
+}
+
+.story-caption {
+  padding-bottom: 0.25rem;
+}
+
+.story-close-btn {
+  top: 1.5rem;
+}
+
+.story-user-info {
+  top: 1.5rem;
+}
+
+/* Safe area styles for Capacitor native app */
+.capacitor-app .story-progress-bar {
+  padding-top: calc(var(--safe-area-inset-top, 0px) + 0.5rem) !important;
+}
+
+.capacitor-app .story-caption {
+  padding-bottom: calc(var(--safe-area-inset-bottom, 0px) + 0.25rem) !important;
+}
+
+.capacitor-app .story-close-btn {
+  top: calc(var(--safe-area-inset-top, 0px) + 1.5rem) !important;
+}
+
+.capacitor-app .story-user-info {
+  top: calc(var(--safe-area-inset-top, 0px) + 1.5rem) !important;
+}
+
+/* Fallback for Android when SafeArea plugin fails */
+.platform-android .story-progress-bar {
+  padding-top: calc(32px + 0.5rem) !important;
+}
+
+.platform-android .story-caption {
+  padding-bottom: calc(48px + 0.25rem) !important;
+}
+
+.platform-android .story-close-btn {
+  top: calc(32px + 1.5rem) !important;
+}
+
+.platform-android .story-user-info {
+  top: calc(32px + 1.5rem) !important;
+}
