@@ -100,7 +100,18 @@ export default defineNuxtPlugin(() => {
           }
           catch (downloadErr) {
             console.error('Failed to download/install update', downloadErr);
-            alert('Failed to download update. Please try again later.');
+            // Check for SSL-related errors
+            const errorMessage = downloadErr instanceof Error ? downloadErr.message : String(downloadErr);
+            if (errorMessage.includes('SSL') || errorMessage.includes('Certificate') || errorMessage.includes('Chain validation')) {
+              console.error('[OTA] SSL/Certificate error detected. This may be due to:');
+              console.error('  1. Device date/time is incorrect');
+              console.error('  2. Server SSL certificate chain is incomplete');
+              console.error('  3. Network security config needs updating');
+              alert('Failed to download update due to a security certificate issue. Please check your device date/time settings and try again.');
+            }
+            else {
+              alert('Failed to download update. Please try again later.');
+            }
           }
         }
         else {
@@ -120,6 +131,14 @@ export default defineNuxtPlugin(() => {
     }
     catch (e) {
       console.error('OTA check failed', e);
+      // Check for SSL-related errors in the main catch block (e.g., from fetch)
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      if (errorMessage.includes('SSL') || errorMessage.includes('Certificate') || errorMessage.includes('Chain validation') || errorMessage.includes('CERT')) {
+        console.error('[OTA] SSL/Certificate error during manifest fetch. This may be due to:');
+        console.error('  1. Device date/time is incorrect');
+        console.error('  2. Server SSL certificate chain is incomplete');
+        console.error('  3. Network security config needs updating');
+      }
     }
   }
 
