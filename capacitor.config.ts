@@ -61,6 +61,10 @@ const config: CapacitorConfig = {
       shakeMenu: false,
       allowShakeChannelSelector: false,
     },
+    PushNotifications: {
+      // Present push notifications when the app is in the foreground
+      presentationOptions: ['badge', 'sound', 'alert'],
+    },
   },
 };
 
