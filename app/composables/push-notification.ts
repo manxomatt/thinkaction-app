@@ -7,6 +7,8 @@ import type {
   PermissionStatus,
 } from '@capacitor/push-notifications';
 import { getFcmToken, onFcmTokenChange } from '~/plugins/003.push-notification.client';
+import { useApiClientFetch } from '~/composables/api-client-fetch';
+import { getAuthToken } from '~/composables/capacitor';
 
 // Reactive state for push notifications
 const fcmToken = ref<string | null>(null);
@@ -295,6 +297,42 @@ export function usePushNotification() {
     return fcmToken.value || getFcmToken();
   }
 
+  /**
+   * Send the current FCM token to the backend
+   * This is useful for manually syncing the token after user authentication
+   * Note: The plugin automatically sends the token on registration (if authenticated),
+   * but this can be used to re-send after login or when needed
+   */
+  async function sendTokenToBackend(): Promise<boolean> {
+    const token = getToken();
+    if (!token) {
+      console.warn('[PushNotification] No FCM token available to send');
+      return false;
+    }
+
+    // Check if user is authenticated before sending
+    const authToken = await getAuthToken();
+    if (!authToken) {
+      console.warn('[PushNotification] Cannot send FCM token - user not authenticated');
+      return false;
+    }
+
+    try {
+      console.log('[PushNotification] Manually sending FCM token to backend...');
+
+      await useApiClientFetch('/auth/update-fcm-token', {
+        method: 'POST',
+        body: { fcm_token: token },
+      });
+
+      console.log('[PushNotification] FCM token sent to backend successfully');
+      return true;
+    } catch (error) {
+      console.error('[PushNotification] Failed to send FCM token to backend:', error);
+      return false;
+    }
+  }
+
   return {
     // State (readonly)
     fcmToken: readonly(fcmToken),
@@ -314,6 +352,7 @@ export function usePushNotification() {
     removeDeliveredNotifications,
     removeAllDeliveredNotifications,
     getToken,
+    sendTokenToBackend,
 
     // Callback setters
     setOnNotificationReceived,

@@ -17,6 +17,9 @@ const config: CapacitorConfig = {
       '*.cloudflare.com',
       '*.r2.cloudflarestorage.com',
       '*.r2.dev',
+      // Local development
+      '10.0.2.2',
+      'localhost',
     ],
   },
   android: {

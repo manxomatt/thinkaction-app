@@ -2,19 +2,25 @@ import { useRuntimeConfig } from 'nuxt/app';
 import type { FetchError, FetchOptions, FetchRequest } from 'ofetch';
 import qs from 'qs';
 import { CapacitorHttp, type HttpResponse } from '@capacitor/core';
-import { useCapacitor, getAuthToken, setAuthToken, setRefreshToken } from './capacitor';
+import { useCapacitor, getAuthToken, setAuthToken, setRefreshToken, getRefreshToken } from './capacitor';
 
 // --- Helper Function: Refresh Token (Native) ---
 async function refreshAccessTokenNative(): Promise<boolean> {
   try {
     const config = useRuntimeConfig();
-    const authToken = await getAuthToken();
+    const refreshToken = await getRefreshToken();
+
+    // If no refresh token, cannot refresh
+    if (!refreshToken) {
+      console.warn('🚫 No refresh token available (native)');
+      return false;
+    }
 
     const response = await CapacitorHttp.post({
       url: `${config.public.apiBase}/auth/refresh`,
       headers: {
         'Content-Type': 'application/json',
-        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        Authorization: `Bearer ${refreshToken}`,
       },
       connectTimeout: 30000,
       readTimeout: 30000,
@@ -85,6 +91,15 @@ async function nativeApiFetch<T>(
     ...(headers as Record<string, string>),
     ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
   };
+
+  // Debug logging for FCM token endpoint
+  if (url.includes('update-fcm-token')) {
+    console.log('[nativeApiFetch] FCM Token Request Debug:');
+    console.log('[nativeApiFetch] URL:', fullUrl);
+    console.log('[nativeApiFetch] Auth token exists:', !!authToken);
+    console.log('[nativeApiFetch] Auth token length:', authToken?.length || 0);
+    console.log('[nativeApiFetch] Authorization header:', requestHeaders.Authorization || 'NOT SET');
+  }
 
   // Ensure body is properly serialized for Capacitor HTTP
   const serializedData = body !== undefined && body !== null

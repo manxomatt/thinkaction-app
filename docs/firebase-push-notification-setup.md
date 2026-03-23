@@ -135,29 +135,53 @@ setOnNotificationAction((action) => {
   }
 });
 
-// Handle token refresh
+// Handle token refresh (optional - token is automatically sent to backend)
 setOnTokenReceived((newToken) => {
   console.log('New FCM Token:', newToken);
-  // Update token on your backend server
-  await updateTokenOnServer(newToken);
+  // Token is automatically sent to backend via /auth/update-fcm-token
+  // Add any additional custom logic here if needed
 });
 ```
 
 ### Sending Token to Backend
 
-When you receive an FCM token, you should send it to your backend server to store it for sending push notifications later:
+The FCM token is **automatically sent to the backend** when it's received or refreshed. The plugin calls the `/auth/update-fcm-token` endpoint automatically.
+
+**Automatic Token Sync:**
+- When the app starts and receives an FCM token, it's automatically sent to the backend
+- When the token is refreshed by Firebase, the new token is automatically sent
+- **After successful login**, the FCM token is automatically synced to associate it with the authenticated user
+- No manual intervention is required for basic functionality
+
+**Manual Token Sync (Optional):**
+If you need to manually sync the token (e.g., after user login), you can use:
 
 ```typescript
-async function sendTokenToServer(token: string) {
-  const { apiFetch } = useApiFetch();
-  
-  await apiFetch('/users/me/push-token', {
-    method: 'POST',
-    body: {
-      token,
-      platform: Capacitor.getPlatform(), // 'android' or 'ios'
-    },
-  });
+const { sendTokenToBackend } = usePushNotification();
+
+// After user login, sync the FCM token
+async function onUserLogin() {
+  await sendTokenToBackend();
+}
+```
+
+**Using the Auth Composable:**
+You can also use the auth composable directly:
+
+```typescript
+const { updateFcmToken } = useAuth();
+
+// Manually update FCM token
+await updateFcmToken(token);
+```
+
+**API Endpoint:**
+```
+POST /auth/update-fcm-token
+Content-Type: application/json
+
+{
+  "fcm_token": "string"
 }
 ```
 
@@ -270,12 +294,60 @@ sendPushNotification(
    - Verify the package name matches in Firebase Console
    - Check logcat for Firebase initialization errors
 
-2. **Notifications not showing**
+2. **SERVICE_NOT_AVAILABLE Error**
+   ```
+   java.io.IOException: java.util.concurrent.ExecutionException: java.io.IOException: SERVICE_NOT_AVAILABLE
+   ```
+   This error occurs when Firebase Cloud Messaging cannot connect to Google Play Services. Common causes:
+   - **Network connectivity issues**: Check if the device has internet access
+   - **Google Play Services unavailable**: Ensure Google Play Services is installed and up-to-date
+   - **Emulator without Google Play**: Use an emulator with Google Play Services (Google APIs image)
+   - **Temporary Firebase service issues**: Wait and retry
+   
+   **The app automatically handles this error** with exponential backoff retry logic:
+   - Retries up to 5 times
+   - Initial delay: 2 seconds, doubling each retry (max 60 seconds)
+   - Check logcat for retry messages: `[PushNotification] Scheduling retry X/5 in Yms`
+   
+   **Manual fixes:**
+   - Restart the app
+   - Check device network connectivity
+   - Update Google Play Services: Settings > Apps > Google Play Services > Update
+   - Clear Google Play Services cache: Settings > Apps > Google Play Services > Clear Cache
+   - On emulator: Use a system image with Google Play (e.g., "Google APIs" or "Google Play")
+
+3. **Firebase Installations Service (FIS) Error**
+   ```
+   Failed to get FIS auth token
+   java.util.concurrent.ExecutionException: com.google.firebase.installations.FirebaseInstallationsException: Firebase Installations Service is unavailable. Please try again later.
+   ```
+   This error occurs when Firebase Installations Service cannot authenticate the app. Common causes:
+   - **Network connectivity issues**: The device cannot reach Firebase servers
+   - **Firebase project misconfiguration**: Check `google-services.json` is correct
+   - **Clock synchronization issues**: Device time is significantly off
+   - **Temporary Firebase service outage**: Firebase services may be temporarily unavailable
+   - **Firewall/proxy blocking**: Corporate networks may block Firebase endpoints
+   
+   **The app automatically handles this error** with exponential backoff retry logic (same as SERVICE_NOT_AVAILABLE).
+   
+   **Manual fixes:**
+   - Check device network connectivity and try again
+   - Verify `google-services.json` is from the correct Firebase project
+   - Ensure device date/time is set correctly (preferably automatic)
+   - Check [Firebase Status Dashboard](https://status.firebase.google.com/) for outages
+   - If on corporate network, ensure Firebase domains are not blocked:
+     - `firebaseinstallations.googleapis.com`
+     - `fcm.googleapis.com`
+     - `fcmregistrations.googleapis.com`
+   - Clear app data and restart: Settings > Apps > ThinkAction > Clear Data
+   - Uninstall and reinstall the app
+
+4. **Notifications not showing**
    - Ensure `POST_NOTIFICATIONS` permission is granted (Android 13+)
    - Check notification channel settings
    - Verify the app is not in battery optimization mode
 
-3. **Build errors**
+5. **Build errors**
    - Run `npx cap sync android` after any configuration changes
    - Clean and rebuild: `cd android && ./gradlew clean`
 
