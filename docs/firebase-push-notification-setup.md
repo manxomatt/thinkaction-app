@@ -294,6 +294,18 @@ sendPushNotification(
    - Verify the package name matches in Firebase Console
    - Check logcat for Firebase initialization errors
 
+1. **Notifications not appearing (but backend sends successfully)**
+   - **Notification Channel**: Android 8.0+ requires notification channels. The app creates a channel called `thinkaction_notifications` on startup.
+   - **Check channel settings**: Go to Settings > Apps > ThinkAction > Notifications and ensure the channel is enabled
+   - **Verify AndroidManifest.xml**: Ensure the default notification channel is configured:
+     ```xml
+     <meta-data
+         android:name="com.google.firebase.messaging.default_notification_channel_id"
+         android:value="thinkaction_notifications" />
+     ```
+   - **Check MyFirebaseMessagingService**: The service must create and show notifications manually for foreground messages
+   - **POST_NOTIFICATIONS permission**: On Android 13+, ensure the permission is granted
+
 2. **SERVICE_NOT_AVAILABLE Error**
    ```
    java.io.IOException: java.util.concurrent.ExecutionException: java.io.IOException: SERVICE_NOT_AVAILABLE
