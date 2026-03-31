@@ -24,7 +24,7 @@ logs
 !.env.example
 
 # Capacitor
-android/
+#android/
 ios/
 capacitor.config.json
 
