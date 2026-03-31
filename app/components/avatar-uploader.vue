@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { CircleStencil, Cropper } from 'vue-advanced-cropper';
 import 'vue-advanced-cropper/dist/style.css';
+import { uploadToPresignedUrl } from '~/composables/upload';
+import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
+import { Capacitor } from '@capacitor/core';
 
 const { user, updateUser } = useAuth();
 
@@ -10,8 +13,20 @@ const cropper = ref();
 const uploading = ref(false);
 const isEditing = ref(false);
 const fileInput = ref<HTMLInputElement>();
+const showSourcePicker = ref(false);
+const isNativePlatform = ref(false);
 
 onMounted(() => {
+  // Check platform after component is mounted to ensure Capacitor is ready
+  const platform = Capacitor.getPlatform();
+  isNativePlatform.value = Capacitor.isNativePlatform();
+
+  // Debug logging (will be stripped in production, but useful for development)
+  if (typeof window !== 'undefined') {
+
+    console.debug('[AvatarUploader] Platform:', platform, 'isNative:', isNativePlatform.value);
+  }
+
   if (user.value?.avatar?.public_domain && user.value?.avatar?.public_path) {
     imageCurrent.value = `${user.value.avatar.public_domain}${user.value.avatar.public_path}`;
   }
@@ -75,11 +90,8 @@ const upload = async () => {
       },
     });
 
-    await $fetch(res.upload_url, {
-      method: 'PUT',
-      body: blob,
-      headers: { 'Content-Type': blob.type },
-    });
+    // Upload to presigned URL (handles both native and web platforms)
+    await uploadToPresignedUrl(res.upload_url, blob);
 
     await useApiClientFetch(`/users/${user.value?._id}`, {
       method: 'PATCH',
@@ -116,6 +128,59 @@ const cancelEdit = () => {
   isEditing.value = false;
   imagePreview.value = '';
 };
+
+// Handle avatar click - show source picker on native, use file input on web
+const handleAvatarClick = () => {
+  if (isNativePlatform.value) {
+    showSourcePicker.value = true;
+  } else {
+    fileInput.value?.click();
+  }
+};
+
+// Pick image from camera using Capacitor Camera plugin
+const pickFromCamera = async () => {
+  showSourcePicker.value = false;
+  try {
+    const image = await Camera.getPhoto({
+      quality: 90,
+      allowEditing: false,
+      resultType: CameraResultType.DataUrl,
+      source: CameraSource.Camera,
+    });
+
+    if (image.dataUrl) {
+      imagePreview.value = image.dataUrl;
+      isEditing.value = true;
+    }
+  } catch (error) {
+    console.error('Camera error:', error);
+  }
+};
+
+// Pick image from gallery using Capacitor Camera plugin
+const pickFromGallery = async () => {
+  showSourcePicker.value = false;
+  try {
+    const image = await Camera.getPhoto({
+      quality: 90,
+      allowEditing: false,
+      resultType: CameraResultType.DataUrl,
+      source: CameraSource.Photos,
+    });
+
+    if (image.dataUrl) {
+      imagePreview.value = image.dataUrl;
+      isEditing.value = true;
+    }
+  } catch (error) {
+    console.error('Gallery error:', error);
+  }
+};
+
+const closeSourcePicker = () => {
+  showSourcePicker.value = false;
+};
 </script>
 
 <template>
@@ -127,7 +192,7 @@ const cancelEdit = () => {
     <!-- Avatar -->
     <div
       class="relative group cursor-pointer flex flex-col items-center"
-      @click="fileInput?.click()"
+      @click="handleAvatarClick"
     >
       <!-- Avatar Image -->
       <my-avatar :src="imageCurrent ?? ''" :size="128" />
@@ -187,5 +252,59 @@ const cancelEdit = () => {
         </div>
       </div>
     </transition>
+
+    <!-- Source Picker Modal (Native only) -->
+    <transition name="fade">
+      <div
+        v-if="showSourcePicker"
+        class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end justify-center"
+        @click.self="closeSourcePicker"
+      >
+        <div class="bg-white dark:bg-gray-800 w-full max-w-md rounded-t-2xl p-4 pb-8 safe-area-inset-bottom">
+          <div class="w-12 h-1 bg-gray-300 dark:bg-gray-600 rounded-full mx-auto mb-4" />
+          <h3 class="text-lg font-semibold text-center mb-4 text-gray-900 dark:text-white">
+            Choose Photo Source
+          </h3>
+          <div class="space-y-2">
+            <button
+              class="w-full py-3 px-4 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 flex items-center justify-center gap-2"
+              @click="pickFromCamera"
+            >
+              <i class="i-ph-camera-bold text-xl" />
+              Take Photo
+            </button>
+            <button
+              class="w-full py-3 px-4 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white font-medium hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center justify-center gap-2"
+              @click="pickFromGallery"
+            >
+              <i class="i-ph-images-bold text-xl" />
+              Choose from Gallery
+            </button>
+            <button
+              class="w-full py-3 px-4 rounded-xl text-gray-500 dark:text-gray-400 font-medium hover:bg-gray-100 dark:hover:bg-gray-700"
+              @click="closeSourcePicker"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.safe-area-inset-bottom {
+  padding-bottom: max(2rem, env(safe-area-inset-bottom));
+}
+</style>

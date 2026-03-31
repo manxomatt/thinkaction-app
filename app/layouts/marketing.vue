@@ -1,4 +1,6 @@
-<script setup></script>
+<script setup>
+const config = useRuntimeConfig();
+</script>
 
 <template>
   <div class="fixed inset-0 bg-[url('/images/home-bg.jpg')] bg-cover bg-center z-0" />
@@ -43,6 +45,9 @@
           <footer>
             <div class="flex justify-center lg:justify-end">
               © 2025 Thinkaction
+            </div>
+            <div class="flex justify-center lg:justify-end text-sm text-slate-500">
+              v{{ config.public.appVersion }}
             </div>
             <div class="mt-2 flex gap-2 items-center justify-center lg:justify-end">
               <nuxt-link to="/about">About</nuxt-link> -

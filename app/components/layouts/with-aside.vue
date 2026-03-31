@@ -19,7 +19,7 @@ onBeforeRouteLeave(() => {
       <section class="overflow-y-auto max-h-svh h-full">
         <div class="relative max-w-full h-full">
           <!-- Main Content Header -->
-          <div class="flex lg:hidden items-center justify-between bg-body backdrop-blur-md">
+          <div class="flex lg:hidden items-center justify-between bg-body backdrop-blur-md pt-[env(safe-area-inset-top,0px)] safe-area-top">
             <div class="flex w-full items-center justify-center">
               <logo />
             </div>

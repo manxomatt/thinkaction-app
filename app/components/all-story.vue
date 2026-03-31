@@ -189,9 +189,9 @@ onUnmounted(stopTimer);
     class="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50"
     @click.self="closeModal"
   >
-    <div class="relative w-full h-full sm:w-[400px] sm:h-[90%] bg-black rounded-lg overflow-hidden flex flex-col">
+    <div class="story-modal-container relative w-full h-full sm:w-[400px] sm:h-[90%] bg-black rounded-lg overflow-hidden flex flex-col">
       <!-- Progress Bars -->
-      <div class="absolute top-0 left-0 right-0 p-2 flex gap-1 z-20">
+      <div class="story-progress-bar absolute top-0 left-0 right-0 p-2 flex gap-1 z-20">
         <div
           v-for="(_, index) in progressList"
           :key="index"
@@ -204,7 +204,7 @@ onUnmounted(stopTimer);
         </div>
       </div>
 
-      <nuxt-link :to="`/goals/${currentStory?.goal_id}`" class="z-100 text-center py-1 px-2 absolute bottom-0 w-full bg-slate-600 text-white text-sm line-clamp-5 opacity-75 flex items-center line-height-relaxed">
+      <nuxt-link :to="`/goals/${currentStory?.goal_id}`" class="story-caption z-100 text-center py-1 px-2 absolute bottom-0 w-full bg-slate-600 text-white text-sm line-clamp-5 opacity-75 flex items-center line-height-relaxed">
         {{ currentStory?.caption }}
       </nuxt-link>
 
@@ -239,14 +239,14 @@ onUnmounted(stopTimer);
 
       <!-- Close -->
       <button
-        class="absolute top-6 right-2 text-white text-2xl z-20"
+        class="story-close-btn absolute right-2 text-white text-2xl z-20"
         @click="closeModal"
       >
         &times;
       </button>
 
       <!-- User -->
-      <div class="absolute top-6 left-2 text-white flex items-center gap-2 z-20">
+      <div class="story-user-info absolute left-2 text-white flex items-center gap-2 z-20">
         <avatar :size="32" :user="currentStory?.created_by" />
         <span class="font-bold text-sm">
           {{ currentStory?.created_by?.username }}

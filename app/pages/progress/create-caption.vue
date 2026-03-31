@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import { useApiGoals } from '~/composables/api/goals';
 import { useFormProgressCreate } from '~/composables/form/progress/create';
+import { uploadToPresignedUrl } from '~/composables/upload';
 
 const { user: myUser } = useAuth();
 
@@ -49,11 +50,8 @@ const onPost = async () => {
       });
       form.value.media_url = `${res.public_domain}${res.public_path}`;
 
-      await $fetch(res.upload_url, {
-        method: 'PUT',
-        body: form.value.media_blob,
-        headers: { 'Content-Type': form.value.media_blob.type },
-      });
+      // Upload to presigned URL (handles both native and web platforms)
+      await uploadToPresignedUrl(res.upload_url, form.value.media_blob);
 
       const res2 = await useApiClientFetch<IPresignAvatarResponse>('/storages/presign-progress', {
         method: 'POST',
@@ -69,11 +67,8 @@ const onPost = async () => {
       });
       form.value.thumbnail_url = `${res2.public_domain}${res2.public_path}`;
 
-      await $fetch(res2.upload_url, {
-        method: 'PUT',
-        body: form.value.thumbnail_blob,
-        headers: { 'Content-Type': form.value.thumbnail_blob.type },
-      });
+      // Upload to presigned URL (handles both native and web platforms)
+      await uploadToPresignedUrl(res2.upload_url, form.value.thumbnail_blob);
     }
 
     await useApiGoals().createProgress(form.value.goal_id, form.value as IUser);
