@@ -4,7 +4,7 @@
 .nuxt
 .nitro
 .cache
-dist
+dist*
 
 # Node dependencies
 node_modules
@@ -24,7 +24,7 @@ logs
 !.env.example
 
 # Capacitor
-android/
+android/app/google-services.json
 ios/
 capacitor.config.json
 
