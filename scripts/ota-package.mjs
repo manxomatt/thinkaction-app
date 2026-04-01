@@ -6,11 +6,11 @@ import archiver from 'archiver';
 const require = createRequire(import.meta.url);
 const pkg = require('../package.json');
 
-const distDir = process.env.OTA_DIST_DIR || '.output/public';
+const distDir = process.env.OTA_DIST_DIR || 'ota';
 const baseOutFile = process.env.OTA_ZIP || 'dist.zip';
 const ext = path.extname(baseOutFile);
 const baseName = path.basename(baseOutFile, ext);
-const outFile = `${baseName}-${pkg.version}${ext}`;
+const outFile = `${distDir}/${baseName}-${pkg.version}${ext}`;
 
 if (!fs.existsSync(distDir)) {
   console.error(`Directory ${distDir} not found — run 'bun run generate' first.`);
