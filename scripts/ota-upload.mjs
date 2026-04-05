@@ -33,7 +33,15 @@ if (!bucket) {
   process.exit(1);
 }
 
-const client = new S3Client({ region });
+const client = new S3Client({ 
+  region: region,
+  endpoint: process.env.S3_ENDPOINT,
+  forcePathStyle: true, 
+  credentials: {
+    accessKeyId: process.env.S3_ACCESS_KEY_ID,
+    secretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
+  },
+});
 
 const version = process.env.OTA_VERSION || pkg.version;
 
@@ -42,7 +50,7 @@ async function run() {
   const baseZipFile = process.env.OTA_ZIP || 'dist.zip';
   const zipExt = path.extname(baseZipFile);
   const zipBaseName = path.basename(baseZipFile, zipExt);
-  const zipPath = `${zipBaseName}-${version}${zipExt}`;
+  const zipPath = `${prefix}/${zipBaseName}-${version}${zipExt}`;
 
   if (!fs.existsSync(zipPath)) {
     console.error(`ZIP file ${zipPath} not found. Run 'bun run ota:package' first.`);
@@ -50,7 +58,7 @@ async function run() {
   }
 
   const zipBody = fs.readFileSync(zipPath);
-  const zipKey = `${prefix}/${version}/${zipPath}`;
+  const zipKey = `${zipPath}`;
   await client.send(new PutObjectCommand({
     Bucket: bucket,
     Key: zipKey,
@@ -63,7 +71,7 @@ async function run() {
   const manifest = {
     version,
     date: new Date().toISOString(),
-    url: `https://${bucket}.s3.${region}.amazonaws.com/${zipKey}`,
+    url: `${process.env.S3_PUBLIC_DOMAIN}/${zipKey}`,
   };
 
   await client.send(new PutObjectCommand({
