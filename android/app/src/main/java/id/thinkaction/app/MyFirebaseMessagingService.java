@@ -77,7 +77,13 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
     private void sendNotification(String title, String messageBody, java.util.Map<String, String> data) {
         // Create intent to open the app when notification is tapped
         Intent intent = new Intent(this, MainActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        // FLAG_ACTIVITY_CLEAR_TOP: If the activity is already running, bring it to front
+        // FLAG_ACTIVITY_SINGLE_TOP: Don't create a new instance if already at top
+        // FLAG_ACTIVITY_NEW_TASK: Required when starting activity from non-activity context
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+        
+        // Add action to identify this is from notification click
+        intent.setAction("PUSH_NOTIFICATION_CLICK");
         
         // Pass data payload to the intent
         if (data != null) {
@@ -86,11 +92,14 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             }
         }
 
+        // Use unique request code based on notification ID to ensure each notification has its own PendingIntent
+        int requestCode = (int) System.currentTimeMillis();
+        
         PendingIntent pendingIntent = PendingIntent.getActivity(
-            this, 
-            0, 
+            this,
+            requestCode,
             intent,
-            PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
         // Default notification sound

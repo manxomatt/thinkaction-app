@@ -1,5 +1,6 @@
 import { defineNuxtPlugin } from '#app';
 import { Capacitor } from '@capacitor/core';
+import { Preferences } from '@capacitor/preferences';
 import { useApiClientFetch } from '~/composables/api-client-fetch';
 import { getAuthToken } from '~/composables/capacitor';
 
@@ -18,6 +19,42 @@ const FCM_RETRY_CONFIG = {
 // Track retry state
 let _registrationRetryCount = 0;
 let _registrationRetryTimeout: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Generate a UUID v4
+ */
+function generateUUID(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+/**
+ * Get or create a unique device ID
+ * The device ID is stored in Preferences and persists across app restarts
+ */
+export async function getOrCreateDeviceId(): Promise<string> {
+  const { value } = await Preferences.get({ key: 'device_id' });
+  if (value) {
+    return value;
+  }
+
+  const newDeviceId = generateUUID();
+  await Preferences.set({ key: 'device_id', value: newDeviceId });
+  return newDeviceId;
+}
+
+/**
+ * Get the device type based on the platform
+ */
+export function getDeviceType(): 'ios' | 'android' | 'web' {
+  const platform = Capacitor.getPlatform();
+  if (platform === 'ios') return 'ios';
+  if (platform === 'android') return 'android';
+  return 'web';
+}
 
 /**
  * Check if an error is a retryable Firebase/FCM error
@@ -90,9 +127,16 @@ async function sendFcmTokenToBackend(token: string): Promise<void> {
 
     console.log('[PushNotification] Sending FCM token to backend...');
 
-    await useApiClientFetch('/auth/update-fcm-token', {
+    const deviceId = await getOrCreateDeviceId();
+    const deviceType = getDeviceType();
+
+    await useApiClientFetch('/auth/register-fcm-token', {
       method: 'POST',
-      body: { fcm_token: token },
+      body: {
+        token,
+        device_id: deviceId,
+        device_type: deviceType,
+      },
     });
 
     console.log('[PushNotification] FCM token sent to backend successfully');
@@ -281,15 +325,26 @@ export default defineNuxtPlugin(async () => {
       // You can show an in-app notification here
     });
 
-    await PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
+    await PushNotifications.addListener('pushNotificationActionPerformed', async (action) => {
       console.log('[PushNotification] Notification action performed:', action);
       // User tapped on the notification
-      // Navigate to relevant screen based on notification data
+      // This brings the app to foreground automatically via the Android intent handling
+
       const data = action.notification.data;
       if (data) {
         console.log('[PushNotification] Notification data:', data);
         // Handle navigation based on notification type
         // Example: if (data.goalId) navigateTo(`/goals/${data.goalId}`);
+
+        // If there's a deep link or route in the notification data, navigate to it
+        if (data.route || data.path || data.url) {
+          const targetRoute = data.route || data.path || data.url;
+          console.log('[PushNotification] Navigating to:', targetRoute);
+          // Use setTimeout to ensure the app is fully in foreground before navigating
+          setTimeout(() => {
+            window.location.href = targetRoute;
+          }, 100);
+        }
       }
     });
 

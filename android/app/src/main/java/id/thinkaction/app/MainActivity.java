@@ -1,10 +1,13 @@
 package id.thinkaction.app;
 
+import android.app.KeyguardManager;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
+import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.PowerManager;
 import android.util.Log;
 import android.view.View;
 import android.view.Window;
@@ -76,6 +79,132 @@ public class MainActivity extends BridgeActivity {
             // Return the original insets instead of CONSUMED to allow WebView to receive them
             return windowInsets;
         });
+
+        // Handle notification click intent if app was launched from notification
+        handleNotificationIntent(getIntent());
+
+        // Log the intent for debugging
+        Intent launchIntent = getIntent();
+        if (launchIntent != null) {
+            Log.d(TAG, "onCreate - Intent action: " + launchIntent.getAction());
+            Log.d(TAG, "onCreate - Intent flags: " + launchIntent.getFlags());
+            Bundle extras = launchIntent.getExtras();
+            if (extras != null) {
+                Log.d(TAG, "onCreate - Intent extras:");
+                for (String key : extras.keySet()) {
+                    Object value = extras.get(key);
+                    Log.d(TAG, "  " + key + " = " + (value != null ? value.toString() : "null"));
+                }
+            }
+        }
+    }
+
+    /**
+     * Called when the activity receives a new intent while already running
+     * This handles the case when user clicks notification while app is in background
+     */
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+
+        Log.d(TAG, "onNewIntent - Intent action: " + intent.getAction());
+        Log.d(TAG, "onNewIntent - Intent flags: " + intent.getFlags());
+        Bundle extras = intent.getExtras();
+        if (extras != null) {
+            Log.d(TAG, "onNewIntent - Intent extras:");
+            for (String key : extras.keySet()) {
+                Object value = extras.get(key);
+                Log.d(TAG, "  " + key + " = " + (value != null ? value.toString() : "null"));
+            }
+        }
+
+        handleNotificationIntent(intent);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        Log.d(TAG, "onResume called - app is now in foreground");
+    }
+
+    /**
+     * Handle notification click intent
+     * This brings the app to foreground and processes notification data
+     */
+    private void handleNotificationIntent(Intent intent) {
+        if (intent == null) {
+            return;
+        }
+
+        String action = intent.getAction();
+        Bundle extras = intent.getExtras();
+
+        // Check if this is a notification click (from our custom service or FCM default handling)
+        boolean isNotificationClick = "PUSH_NOTIFICATION_CLICK".equals(action)
+            || "FCM_PLUGIN_ACTIVITY".equals(action)
+            || (extras != null && extras.containsKey("google.message_id"));
+
+        if (isNotificationClick) {
+            Log.d(TAG, "App opened from push notification click");
+            Log.d(TAG, "Action: " + (action != null ? action : "null"));
+
+            // Bring the app to foreground
+            bringAppToForeground();
+
+            // Log all extras from the notification
+            if (extras != null) {
+                Log.d(TAG, "Notification data:");
+                for (String key : extras.keySet()) {
+                    Object value = extras.get(key);
+                    Log.d(TAG, "  " + key + " = " + (value != null ? value.toString() : "null"));
+                }
+            }
+
+            // The Capacitor PushNotifications plugin will handle the pushNotificationActionPerformed event
+            // which will be triggered automatically when the app processes this intent
+        }
+    }
+
+    /**
+     * Bring the app to foreground
+     * This is called when a notification is clicked to ensure the app is visible
+     */
+    private void bringAppToForeground() {
+        Log.d(TAG, "Bringing app to foreground...");
+
+        // Wake up the screen if it's off
+        PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
+        if (powerManager != null && !powerManager.isInteractive()) {
+            Log.d(TAG, "Screen is off, waking up...");
+            PowerManager.WakeLock wakeLock = powerManager.newWakeLock(
+                PowerManager.FULL_WAKE_LOCK |
+                PowerManager.ACQUIRE_CAUSES_WAKEUP |
+                PowerManager.ON_AFTER_RELEASE,
+                "ThinkAction:NotificationWakeLock"
+            );
+            wakeLock.acquire(3000); // Hold wake lock for 3 seconds
+        }
+
+        // Dismiss keyguard if present (for devices with lock screen)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            KeyguardManager keyguardManager = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
+            if (keyguardManager != null) {
+                keyguardManager.requestDismissKeyguard(this, null);
+            }
+        }
+
+        // Ensure the window is visible
+        Window window = getWindow();
+        if (window != null) {
+            window.addFlags(
+                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED |
+                WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON |
+                WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+            );
+        }
+
+        Log.d(TAG, "App should now be in foreground");
     }
 
     /**
