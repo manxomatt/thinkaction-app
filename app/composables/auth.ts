@@ -166,9 +166,17 @@ export const useAuth = () => {
    * @param fcmToken - The FCM token from Firebase
    */
   const registerFcmToken = async (fcmToken: string) => {
+    const { getOrCreateDeviceId, getDeviceType } = await import('~/plugins/003.push-notification.client');
+    const deviceId = await getOrCreateDeviceId();
+    const deviceType = getDeviceType();
+
     return await useApiClientFetch('/auth/register-fcm-token', {
       method: 'POST',
-      body: { fcm_token: fcmToken },
+      body: {
+        token: fcmToken,
+        device_id: deviceId,
+        device_type: deviceType,
+      },
     });
   };
 
