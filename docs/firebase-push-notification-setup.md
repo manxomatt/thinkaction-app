@@ -138,14 +138,14 @@ setOnNotificationAction((action) => {
 // Handle token refresh (optional - token is automatically sent to backend)
 setOnTokenReceived((newToken) => {
   console.log('New FCM Token:', newToken);
-  // Token is automatically sent to backend via /auth/update-fcm-token
+  // Token is automatically sent to backend via /auth/register-fcm-token
   // Add any additional custom logic here if needed
 });
 ```
 
 ### Sending Token to Backend
 
-The FCM token is **automatically sent to the backend** when it's received or refreshed. The plugin calls the `/auth/update-fcm-token` endpoint automatically.
+The FCM token is **automatically sent to the backend** when it's received or refreshed. The plugin calls the `/auth/register-fcm-token` endpoint automatically.
 
 **Automatic Token Sync:**
 - When the app starts and receives an FCM token, it's automatically sent to the backend
@@ -169,15 +169,15 @@ async function onUserLogin() {
 You can also use the auth composable directly:
 
 ```typescript
-const { updateFcmToken } = useAuth();
+const { registerFcmToken } = useAuth();
 
-// Manually update FCM token
-await updateFcmToken(token);
+// Manually register FCM token
+await registerFcmToken(token);
 ```
 
 **API Endpoint:**
 ```
-POST /auth/update-fcm-token
+POST /auth/register-fcm-token
 Content-Type: application/json
 
 {
