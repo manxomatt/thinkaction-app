@@ -93,7 +93,7 @@ async function nativeApiFetch<T>(
   };
 
   // Debug logging for FCM token endpoint
-  if (url.includes('update-fcm-token')) {
+  if (url.includes('register-fcm-token')) {
     console.log('[nativeApiFetch] FCM Token Request Debug:');
     console.log('[nativeApiFetch] URL:', fullUrl);
     console.log('[nativeApiFetch] Auth token exists:', !!authToken);

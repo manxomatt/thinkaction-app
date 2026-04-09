@@ -161,12 +161,12 @@ export const useAuth = () => {
   };
 
   /**
-   * Update FCM token for push notifications
+   * Register FCM token for push notifications
    * This should be called whenever the FCM token is received or refreshed
    * @param fcmToken - The FCM token from Firebase
    */
-  const updateFcmToken = async (fcmToken: string) => {
-    return await useApiClientFetch('/auth/update-fcm-token', {
+  const registerFcmToken = async (fcmToken: string) => {
+    return await useApiClientFetch('/auth/register-fcm-token', {
       method: 'POST',
       body: { fcm_token: fcmToken },
     });
@@ -181,7 +181,7 @@ export const useAuth = () => {
       const fcmToken = getFcmToken();
       if (fcmToken) {
         console.log('[Auth] Syncing FCM token after login...');
-        await updateFcmToken(fcmToken);
+        await registerFcmToken(fcmToken);
         console.log('[Auth] FCM token synced successfully');
       }
     } catch (error) {
@@ -204,7 +204,7 @@ export const useAuth = () => {
     requestPassword,
     resetPassword,
     sendEmailVerification,
-    updateFcmToken,
+    registerFcmToken,
     syncFcmToken,
   };
 };
