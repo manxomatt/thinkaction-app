@@ -6,7 +6,7 @@ import type {
   Token,
   PermissionStatus,
 } from '@capacitor/push-notifications';
-import { getFcmToken, onFcmTokenChange } from '~/plugins/003.push-notification.client';
+import { getFcmToken, onFcmTokenChange, getOrCreateDeviceId, getDeviceType } from '~/plugins/003.push-notification.client';
 import { useApiClientFetch } from '~/composables/api-client-fetch';
 import { getAuthToken } from '~/composables/capacitor';
 
@@ -320,9 +320,16 @@ export function usePushNotification() {
     try {
       console.log('[PushNotification] Manually sending FCM token to backend...');
 
-      await useApiClientFetch('/auth/update-fcm-token', {
+      const deviceId = await getOrCreateDeviceId();
+      const deviceType = getDeviceType();
+
+      await useApiClientFetch('/auth/register-fcm-token', {
         method: 'POST',
-        body: { fcm_token: token },
+        body: {
+          token,
+          device_id: deviceId,
+          device_type: deviceType,
+        },
       });
 
       console.log('[PushNotification] FCM token sent to backend successfully');

@@ -17,11 +17,34 @@
             android:label="@string/title_activity_main"
             android:theme="@style/AppTheme.NoActionBarLaunch"
             android:launchMode="singleTask"
-            android:exported="true">
+            android:exported="true"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true">
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- Intent filter for FCM notification click when app is in background -->
+            <!-- FCM uses this to open the app when notification is clicked -->
+            <intent-filter>
+                <action android:name="PUSH_NOTIFICATION_CLICK" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+
+            <!-- Intent filter for FCM default click action -->
+            <intent-filter>
+                <action android:name="FCM_PLUGIN_ACTIVITY" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+
+            <!-- Intent filter for VIEW action (used by some notification systems) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="thinkaction" />
             </intent-filter>
 
         </activity>
@@ -59,6 +82,12 @@
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_color"
             android:resource="@color/colorPrimary" />
+
+        <!-- Set default click action for FCM notifications -->
+        <!-- This ensures clicking notification opens MainActivity -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_click_action"
+            android:value="FCM_PLUGIN_ACTIVITY" />
     </application>
 
     <!-- Permissions -->
@@ -73,6 +102,8 @@
     
     <!-- Push Notification permissions -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />
     
     <!-- Camera feature declaration -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
