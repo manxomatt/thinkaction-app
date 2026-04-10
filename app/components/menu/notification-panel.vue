@@ -66,7 +66,7 @@ onMounted(async () => {
         class="fixed top-0 left-0 w-sm max-w-[80vw] h-full shadow-xl bg-white border-r border-slate-200 z-15 flex flex-col lg:ml-64"
       >
         <!-- Header -->
-        <div class="flex items-center justify-between p-4 border-b border-slate-100">
+        <div class="notification-header flex items-center justify-between p-4 border-b border-slate-100">
           <h2 class="text-lg font-semibold">Notifications</h2>
           <button class="i-lucide:x text-xl" @click="showSidebar = false" />
         </div>
@@ -168,5 +168,12 @@ onMounted(async () => {
 .slide-left-leave-to {
   transform: translateX(-100%);
   opacity: 0;
+}
+</style>
+
+<style>
+/* Mobile-only: Add extra top padding for Android system status bar */
+.capacitor-app .notification-header {
+  padding-top: calc(var(--safe-area-inset-top, 0px) + 64px) !important;
 }
 </style>
