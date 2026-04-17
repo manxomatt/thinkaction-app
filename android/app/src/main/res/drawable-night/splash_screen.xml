@@ -6,6 +6,8 @@
     <!-- Centered logo -->
     <item>
         <bitmap
+            android:width="160dp"
+            android:height="160dp"
             android:gravity="center"
             android:src="@drawable/splash_logo" />
     </item>

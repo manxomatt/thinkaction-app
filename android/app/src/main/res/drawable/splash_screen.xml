@@ -4,9 +4,12 @@
     <item android:drawable="@color/splash_background" />
     
     <!-- Centered logo -->
-    <item>
+    <item
+        android:width="160dp"
+        android:height="160dp"
+        android:gravity="center">
         <bitmap
-            android:gravity="center"
+            android:gravity="fill"
             android:src="@drawable/splash_logo" />
     </item>
 </layer-list>
